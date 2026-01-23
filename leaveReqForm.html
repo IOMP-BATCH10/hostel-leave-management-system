@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Request</title>
+    <link rel="stylesheet" href="styleStudent.css">
+</head>
+<body>
+
+<div class="container">
+    <h2>Leave Request Form</h2>
+
+    <form class="form-box">
+
+        <div class="form-group">
+            <label>From Date</label>
+            <input type="date">
+        </div>
+
+        <div class="form-group">
+            <label>To Date</label>
+            <input type="date">
+        </div>
+
+        <!-- Year and Block Side by Side -->
+        <div class="form-row">
+            <div class="form-group half-width">
+                <label>Year</label>
+                <select>
+                    <option>Select Year</option>
+                    <option>1st Year</option>
+                    <option>2nd Year</option>
+                    <option>3rd Year</option>
+                    <option>4th Year</option>
+                </select>
+            </div>
+
+            <div class="form-group half-width">
+                <label>Block</label>
+                <select>
+                    <option>Select Block</option>
+                    <option>Block 1</option>
+                    <option>Block 2</option>
+                    <option>Block 3</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Room Number</label>
+            <input type="text" placeholder="Enter Room Number">
+        </div>
+
+        <div class="form-group">
+            <label>Reason for Leave</label>
+            <textarea placeholder="Enter reason for leave"></textarea>
+        </div>
+
+        <button type="submit">Submit Leave Request</button>
+    </form>
+</div>
+
+</body>
+</html>
