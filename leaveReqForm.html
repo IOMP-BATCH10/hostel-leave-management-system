@@ -50,6 +50,12 @@
             border-radius: 6px;
             border: 1px solid #ccc;
             font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #1f4ed8;
         }
 
         textarea {
@@ -74,9 +80,14 @@
             border-radius: 6px;
             cursor: pointer;
             margin-top: 10px;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        button:hover { background-color: #173db3; }
+        button:hover:not(:disabled) { background-color: #173db3; }
 
         button:disabled {
             background-color: #93a8e8;
@@ -92,8 +103,44 @@
             color: #3730a3;
         }
 
+        /* Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 999;
+            white-space: nowrap;
+        }
+        .toast.success { background: #059669; }
+        .toast.error   { background: #dc2626; }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
         @media (max-width: 500px) {
             .form-row { flex-direction: column; }
+            .container { margin: 20px; padding: 20px; }
         }
     </style>
 </head>
@@ -102,7 +149,7 @@
 <div class="container">
     <h2>Leave Request Form</h2>
 
-    <div class="info-box" id="studentInfo">Fetching your details...</div>
+    <div class="info-box" id="studentInfo">Loading...</div>
     <br>
 
     <form class="form-box" id="leaveForm">
@@ -150,26 +197,32 @@
             <textarea id="reason" placeholder="Enter reason for leave"></textarea>
         </div>
 
-        <button type="submit" id="submitBtn">Submit Leave Request</button>
+        <button type="submit" id="submitBtn">
+            <div class="spinner" id="spinner"></div>
+            <span id="btnText">Submit Leave Request</span>
+        </button>
+
     </form>
 </div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="supabaseClient.js"></script>
 
 <script>
-    // ── On page load, get student from sessionStorage (set during login) ──
-    // Your loginStudent.html should save the student object after successful login:
-    // sessionStorage.setItem("student", JSON.stringify(studentData));
-
     let student = null;
 
+    // ── Load student from sessionStorage + wake up Supabase in background ──
     window.onload = function () {
+        // Wake up Supabase early while user fills the form
+        db.from("leave_requests").select("id").limit(1);
+
         const stored = sessionStorage.getItem("loggedInUser");
 
         if (!stored) {
-            alert("You must be logged in.");
             window.location.href = "loginStudent.html";
             return;
         }
@@ -179,6 +232,14 @@
         document.getElementById("studentInfo").innerHTML =
             `👤 <strong>${student.full_name}</strong> (${student.roll_number}) &nbsp;|&nbsp; 🏠 ${student.hostel_type}`;
     };
+
+    // ── Toast helper ──
+    function showToast(msg, type = '') {
+        const toast = document.getElementById("toast");
+        toast.textContent = msg;
+        toast.className = `toast ${type} show`;
+        setTimeout(() => { toast.className = `toast ${type}`; }, 3000);
+    }
 
     // ── Form Submit ──
     document.getElementById("leaveForm").onsubmit = async function (e) {
@@ -192,23 +253,28 @@
         const reason   = document.getElementById("reason").value.trim();
         const roomPattern = /^[A-Za-z0-9]+$/;
 
-        // Validation
-        if (!fromDate)                             return alert("Please select From Date.");
-        if (!toDate)                               return alert("Please select To Date.");
-        if (new Date(toDate) < new Date(fromDate)) return alert("To Date cannot be earlier than From Date.");
-        if (year === "Select Year")                return alert("Please select your Year.");
-        if (block === "Select Block")              return alert("Please select your Block.");
-        if (!roomPattern.test(room))               return alert("Room Number should contain only letters and numbers.");
-        if (reason.length < 5)                     return alert("Reason must be at least 5 characters long.");
+        // ── Validation ──
+        if (!fromDate)                             { showToast("Please select From Date.", "error"); return; }
+        if (!toDate)                               { showToast("Please select To Date.", "error"); return; }
+        if (new Date(toDate) < new Date(fromDate)) { showToast("To Date cannot be earlier than From Date.", "error"); return; }
+        if (year === "Select Year")                { showToast("Please select your Year.", "error"); return; }
+        if (block === "Select Block")              { showToast("Please select your Block.", "error"); return; }
+        if (!roomPattern.test(room))               { showToast("Room Number: letters and numbers only.", "error"); return; }
+        if (reason.length < 5)                     { showToast("Reason must be at least 5 characters.", "error"); return; }
 
+        // ── Show spinner ──
         const submitBtn = document.getElementById("submitBtn");
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Submitting...";
+        const spinner   = document.getElementById("spinner");
+        const btnText   = document.getElementById("btnText");
+        submitBtn.disabled    = true;
+        spinner.style.display = "block";
+        btnText.textContent   = "Submitting...";
 
-        const { error } = await supabaseClient
+        // ── Insert into Supabase ──
+        const { error } = await db
             .from("leave_requests")
             .insert([{
-                student_id:   student.id,             // bigint from students table
+                student_id:   student.id,
                 student_name: student.full_name,
                 roll_number:  student.roll_number,
                 from_date:    fromDate,
@@ -217,18 +283,21 @@
                 block:        block,
                 room_number:  room,
                 reason:       reason,
-                hostel_type:  student.hostel_type,    // "Boys Hostel" or "Girls Hostel"
+                hostel_type:  student.hostel_type,
                 status:       "Pending"
             }]);
 
         if (error) {
             console.error(error);
-            alert("Failed to submit: " + error.message);
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Leave Request";
+            spinner.style.display = "none";
+            btnText.textContent   = "Submit Leave Request";
+            submitBtn.disabled    = false;
+            showToast("Failed: " + error.message, "error");
         } else {
-            alert(`Leave Request Submitted! Your ${student.hostel_type} caretaker/warden will review it.`);
-            window.location.href = "leaveHistory.html";
+            spinner.style.display = "none";
+            btnText.textContent   = "✓ Submitted!";
+            showToast("Leave request submitted successfully!", "success");
+            setTimeout(() => { window.location.href = "leaveHistory.html"; }, 1200);
         }
     };
 </script>

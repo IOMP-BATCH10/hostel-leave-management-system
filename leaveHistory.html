@@ -261,7 +261,7 @@
     };
 
     async function loadHistory() {
-        const { data, error } = await supabaseClient
+        const { data, error } = await db
             .from("leave_requests")
             .select("*")
             .eq("student_id", student.id)
@@ -342,10 +342,10 @@
 
     // Visual 3-step progress tracker: Submitted → Caretaker → Warden
     function progressTracker(status) {
-        let s1 = 'done', l1 = 'done';          // Submitted always done
-        let s2 = '', l2 = '';                   // Caretaker step
+        let s1 = 'done', l1 = 'done';
+        let s2 = '', l2 = '';
         let conn1 = '', conn2 = '';
-        let s3 = '', l3 = '';                   // Warden step
+        let s3 = '', l3 = '';
 
         if (status === 'Pending') {
             s2 = 'active'; l2 = 'active';

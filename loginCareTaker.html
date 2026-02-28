@@ -118,9 +118,12 @@
                 .select('*')
                 .eq('employee_id', employee_id)
                 .eq('password', password)
-                .single();
+                .maybeSingle();
 
-            if (error || !data) {
+            if (error) {
+                alert("Something went wrong. Please try again.");
+                console.error(error);
+            } else if (!data) {
                 alert("Invalid Employee ID or password. Please try again.");
             } else {
                 sessionStorage.setItem('loggedInUser', JSON.stringify(data));

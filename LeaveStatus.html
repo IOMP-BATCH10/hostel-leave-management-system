@@ -258,7 +258,7 @@
     };
 
     async function loadStatus() {
-        const { data, error } = await supabaseClient
+        const { data, error } = await db
             .from("leave_requests")
             .select("*")
             .eq("student_id", student.id)
@@ -277,11 +277,9 @@
             return;
         }
 
-        // Show latest by default
         selectedId = allRequests[0].id;
         renderLatest(allRequests[0]);
 
-        // Show all requests list
         if (allRequests.length > 0) {
             document.getElementById("allSection").style.display = "block";
             renderList();
@@ -402,7 +400,7 @@
         selectedId = id;
         const r = allRequests.find(x => x.id === id);
         if (r) renderLatest(r);
-        renderList(); // re-render to update active-card highlight
+        renderList();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
