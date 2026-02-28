@@ -234,11 +234,15 @@
         caretaker = JSON.parse(stored);
         document.getElementById("caretakerName").textContent = caretaker.full_name;
         document.getElementById("hostelName").textContent = caretaker.hostel;
+
+        // Wake up Supabase while page loads
+        db.from("leave_requests").select("id").limit(1);
+
         await loadRequests();
     };
 
     async function loadRequests() {
-        const { data, error } = await supabaseClient
+        const { data, error } = await db
             .from("leave_requests")
             .select("*")
             .eq("hostel_type", caretaker.hostel)
@@ -314,11 +318,11 @@
         const comment = document.getElementById("commentInput").value.trim();
         const newStatus = currentAction === 'approve' ? 'Caretaker Approved' : 'Rejected';
 
-        const { error } = await supabaseClient
+        const { error } = await db
             .from("leave_requests")
             .update({
-                status:           newStatus,
-                caretaker_action: currentAction === 'approve' ? 'Approved' : 'Rejected',
+                status:            newStatus,
+                caretaker_action:  currentAction === 'approve' ? 'Approved' : 'Rejected',
                 caretaker_comment: comment || null
             })
             .eq("id", currentRequestId);

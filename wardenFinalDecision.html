@@ -124,11 +124,15 @@
         if (!stored) { window.location.href = "loginWarden.html"; return; }
         warden = JSON.parse(stored);
         document.getElementById("wardenName").textContent = warden.full_name;
+
+        // Wake up Supabase while page loads
+        db.from("leave_requests").select("id").limit(1);
+
         await loadAll();
     };
 
     async function loadAll() {
-        const { data, error } = await supabaseClient
+        const { data, error } = await db
             .from("leave_requests")
             .select("*")
             .eq("hostel_type", warden.hostel)
@@ -215,7 +219,7 @@
         const comment = document.getElementById("commentInput").value.trim();
         const newStatus = currentAction === 'approve' ? 'Approved' : 'Rejected';
 
-        const { error } = await supabaseClient
+        const { error } = await db
             .from("leave_requests")
             .update({
                 status:         newStatus,
