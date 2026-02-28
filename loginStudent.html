@@ -62,11 +62,7 @@
             cursor: pointer; 
             transition: background 0.3s;
          }
-        button:hover:not(:disabled) { background: #5a6fd8; }
-        button:disabled {
-            background: #a0a8e8;
-            cursor: not-allowed;
-        }
+        button:hover { background: #5a6fd8; }
         .forgot-password { 
             text-align: center; 
             margin-top: 1rem;
@@ -76,29 +72,11 @@
             text-decoration: none; 
             font-size: 0.9rem; 
         }
-
-        /* Error message box */
-        .error-msg {
-            display: none;
-            background: #fff0f0;
-            color: #cc0000;
-            border: 1px solid #ffcccc;
-            border-radius: 5px;
-            padding: 0.6rem 0.9rem;
-            font-size: 0.88rem;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        .error-msg.show { display: block; }
     </style>
 </head>
 <body>
     <div class="login-container">
         <h2>Student Login</h2>
-
-        <!-- Error message box (replaces alert) -->
-        <div class="error-msg" id="errorMsg"></div>
-
         <form onsubmit="return handleLogin(event)">
             <div class="form-group">
                 <label for="roll_number">Roll Number</label>
@@ -112,7 +90,7 @@
                 <input type="checkbox" id="remember" name="remember">
                 <label for="remember">Remember me</label>
             </div>
-            <button type="submit" id="loginBtn">Login</button>
+            <button type="submit">Login</button>
         </form>
         <div class="forgot-password">
             <a href="#">Forgot Password?</a>
@@ -124,59 +102,30 @@
     <script src="supabaseClient.js"></script>
 
     <script>
-        function showError(message) {
-            const errorMsg = document.getElementById("errorMsg");
-            errorMsg.textContent = message;
-            errorMsg.classList.add("show");
-        }
-
-        function hideError() {
-            document.getElementById("errorMsg").classList.remove("show");
-        }
-
         async function handleLogin(event) {
             event.preventDefault();
-            hideError();
 
             const roll_number = document.getElementById("roll_number").value.trim();
             const password    = document.getElementById("password").value.trim();
-            const btn         = document.getElementById("loginBtn");
 
             if (!roll_number || !password) {
-                showError("Please enter both roll number and password.");
+                alert("Please enter both roll number and password.");
                 return false;
             }
 
-            // Show loading state
-            btn.disabled = true;
-            btn.textContent = "Logging in...";
+            const { data, error } = await db
+                .from('students')
+                .select('*')
+                .eq('roll_number', roll_number)
+                .eq('password', password)
+                .single();
 
-            try {
-                const { data, error } = await db
-                    .from('students')
-                    .select('*')
-                    .eq('roll_number', roll_number)
-                    .eq('password', password)
-                    .single();
-
-                if (error || !data) {
-                    // This runs when roll number or password is wrong
-                    showError("Invalid roll number or password. Please try again.");
-                } else {
-                    // Login success
-                    sessionStorage.setItem('loggedInUser', JSON.stringify(data));
-                    alert("Login Successful!");
-                    window.location.href = "studentDashboard.html";
-                }
-
-            } catch (err) {
-                // This catches network errors, Supabase config issues, etc.
-                console.error("Login error:", err);
-                showError("Something went wrong. Please try again. (" + err.message + ")");
-            } finally {
-                // Always re-enable the button
-                btn.disabled = false;
-                btn.textContent = "Login";
+            if (error || !data) {
+                alert("Invalid roll number or password. Please try again.");
+            } else {
+                sessionStorage.setItem('loggedInUser', JSON.stringify(data));
+                alert("Login Successful!");
+                window.location.href = "studentDashboard.html";
             }
 
             return false;
