@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approve / Reject | Caretaker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", Arial, sans-serif; background: #f5f7fa; min-height: 100vh; }
+
+        .topbar {
+            background: #1e3a5f;
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .topbar h1 { font-size: 20px; font-weight: 600; }
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.15);
+            padding: 6px 14px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .container { max-width: 1000px; margin: 32px auto; padding: 0 20px; }
+
+        .info-banner {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1e40af;
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .table-header h2 { font-size: 16px; color: #1f2937; font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            background: #f9fafb;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        tbody td {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #374151;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: #f9fafb; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+
+        .action-btns { display: flex; gap: 8px; }
+        .btn-approve { padding: 6px 14px; background: #10b981; color: white; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; }
+        .btn-approve:hover { background: #059669; }
+        .btn-reject  { padding: 6px 14px; background: #ef4444; color: white; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; }
+        .btn-reject:hover  { background: #dc2626; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .loading { text-align: center; padding: 40px; color: #6b7280; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; border-radius: 10px; padding: 28px; width: 420px; max-width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        .modal h3 { font-size: 17px; color: #1f2937; margin-bottom: 16px; }
+        .modal textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; resize: none; height: 90px; font-family: inherit; }
+        .modal textarea:focus { outline: none; border-color: #2563eb; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+        .btn-cancel { padding: 8px 18px; background: #f3f4f6; color: #374151; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn-confirm { padding: 8px 18px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn-confirm.approve { background: #10b981; }
+        .btn-confirm.reject  { background: #ef4444; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>✅ Approve / Reject Requests</h1>
+    <div style="display:flex;align-items:center;gap:16px;">
+        <span id="caretakerName" style="font-size:13px;opacity:0.8;"></span>
+        <a href="caretakerDashboard.html" class="back-btn">← Back</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="info-banner">
+        ℹ️ Only <strong>Pending</strong> requests are shown here. Once actioned, they move to All Leave Records.
+    </div>
+
+    <div class="table-card">
+        <div class="table-header">
+            <h2>Pending Requests — Take Action</h2>
+        </div>
+        <div id="tableContainer">
+            <div class="loading">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3 id="modalTitle">Add Comment</h3>
+        <textarea id="commentInput" placeholder="Enter a comment (optional)..."></textarea>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-confirm" id="confirmBtn" onclick="confirmAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
+    let caretaker = null;
+    let requests = [];
+    let currentAction = null;
+    let currentRequestId = null;
+
+    window.onload = async function () {
+        const stored = sessionStorage.getItem("loggedInUser");
+        if (!stored) { window.location.href = "loginCareTaker.html"; return; }
+        caretaker = JSON.parse(stored);
+        document.getElementById("caretakerName").textContent = caretaker.full_name;
+        await loadRequests();
+    };
+
+    async function loadRequests() {
+        const { data, error } = await supabaseClient
+            .from("leave_requests")
+            .select("*")
+            .eq("hostel_type", caretaker.hostel)
+            .eq("status", "Pending")
+            .order("applied_at", { ascending: false });
+
+        if (error) { console.error(error); return; }
+        requests = data || [];
+        renderTable();
+    }
+
+    function renderTable() {
+        const container = document.getElementById("tableContainer");
+        if (requests.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">🎉</div><p>No pending requests to action!</p></div>`;
+            return;
+        }
+        container.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Roll No.</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Room</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${requests.map(r => `
+                        <tr>
+                            <td>${r.student_name || '—'}</td>
+                            <td>${r.roll_number || '—'}</td>
+                            <td>${formatDate(r.from_date)}</td>
+                            <td>${formatDate(r.to_date)}</td>
+                            <td>${r.block || '—'} / ${r.room_number || '—'}</td>
+                            <td title="${r.reason}">${truncate(r.reason, 30)}</td>
+                            <td><span class="badge badge-pending">Pending</span></td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="btn-approve" onclick="openModal(${r.id}, 'approve')">Approve</button>
+                                    <button class="btn-reject"  onclick="openModal(${r.id}, 'reject')">Reject</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    function openModal(id, action) {
+        currentRequestId = id;
+        currentAction = action;
+        document.getElementById("modalTitle").textContent = action === 'approve' ? '✅ Approve Request' : '❌ Reject Request';
+        document.getElementById("commentInput").value = '';
+        const confirmBtn = document.getElementById("confirmBtn");
+        confirmBtn.textContent = action === 'approve' ? 'Approve' : 'Reject';
+        confirmBtn.className = `btn-confirm ${action}`;
+        document.getElementById("modalOverlay").classList.add("show");
+    }
+
+    function closeModal() {
+        document.getElementById("modalOverlay").classList.remove("show");
+        currentRequestId = null; currentAction = null;
+    }
+
+    async function confirmAction() {
+        const comment = document.getElementById("commentInput").value.trim();
+        const newStatus = currentAction === 'approve' ? 'Caretaker Approved' : 'Rejected';
+
+        const { error } = await supabaseClient
+            .from("leave_requests")
+            .update({
+                status:            newStatus,
+                caretaker_action:  currentAction === 'approve' ? 'Approved' : 'Rejected',
+                caretaker_comment: comment || null
+            })
+            .eq("id", currentRequestId);
+
+        if (error) {
+            alert("Failed: " + error.message);
+        } else {
+            alert(`Request ${newStatus}!`);
+            closeModal();
+            await loadRequests();
+        }
+    }
+
+    function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
+    function truncate(str, n) { return str && str.length > n ? str.slice(0, n) + '...' : (str || '—'); }
+</script>
+</body>
+</html>

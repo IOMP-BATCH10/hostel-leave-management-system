@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leave Request</title>
     <style>
-        /* ---- Your Existing CSS (Unchanged) ---- */
         body {
             font-family: "Segoe UI", Arial, sans-serif;
             background-color: #f2f4f7;
@@ -40,6 +39,12 @@
             gap: 5px;
         }
 
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
         input, select, textarea {
             padding: 10px;
             border-radius: 6px;
@@ -58,9 +63,7 @@
             flex-wrap: wrap;
         }
 
-        .half-width {
-            flex: 1;
-        }
+        .half-width { flex: 1; }
 
         button {
             padding: 12px;
@@ -73,100 +76,51 @@
             margin-top: 10px;
         }
 
-        button:hover {
-            background-color: #173db3;
+        button:hover { background-color: #173db3; }
+
+        button:disabled {
+            background-color: #93a8e8;
+            cursor: not-allowed;
+        }
+
+        .info-box {
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 6px;
+            padding: 10px 15px;
+            font-size: 13px;
+            color: #3730a3;
         }
 
         @media (max-width: 500px) {
-            .form-row {
-                flex-direction: column;
-            }
+            .form-row { flex-direction: column; }
         }
     </style>
-
-    <!-- JAVASCRIPT VALIDATION -->
-    <script>
-        window.onload = function () {
-            document.querySelector(".form-box").onsubmit = function () {
-
-                var fromDate = document.querySelectorAll("input[type='date']")[0].value;
-                var toDate   = document.querySelectorAll("input[type='date']")[1].value;
-                var year     = document.querySelectorAll("select")[0].value;
-                var block    = document.querySelectorAll("select")[1].value;
-                var room     = document.querySelector("input[type='text']").value.trim();
-                var reason   = document.querySelector("textarea").value.trim();
-
-                var roomPattern = /^[A-Za-z0-9]+$/;
-
-                // From Date validation
-                if (fromDate === "") {
-                    alert("Please select From Date.");
-                    return false;
-                }
-
-                // To Date validation
-                if (toDate === "") {
-                    alert("Please select To Date.");
-                    return false;
-                }
-
-                // Date comparison validation
-                if (new Date(toDate) < new Date(fromDate)) {
-                    alert("To Date cannot be earlier than From Date.");
-                    return false;
-                }
-
-                // Year validation
-                if (year === "Select Year") {
-                    alert("Please select your Year.");
-                    return false;
-                }
-
-                // Block validation
-                if (block === "Select Block") {
-                    alert("Please select your Block.");
-                    return false;
-                }
-
-                // Room validation
-                if (!roomPattern.test(room)) {
-                    alert("Room Number should contain only letters and numbers.");
-                    return false;
-                }
-
-                // Reason validation
-                if (reason.length < 5) {
-                    alert("Reason must be at least 5 characters long.");
-                    return false;
-                }
-
-                alert("Leave Request Submitted Successfully!");
-                return false; // Change to true when backend is connected
-            };
-        };
-    </script>
 </head>
 <body>
 
 <div class="container">
     <h2>Leave Request Form</h2>
 
-    <form class="form-box">
+    <div class="info-box" id="studentInfo">Fetching your details...</div>
+    <br>
+
+    <form class="form-box" id="leaveForm">
 
         <div class="form-group">
             <label>From Date</label>
-            <input type="date">
+            <input type="date" id="fromDate">
         </div>
 
         <div class="form-group">
             <label>To Date</label>
-            <input type="date">
+            <input type="date" id="toDate">
         </div>
 
         <div class="form-row">
             <div class="form-group half-width">
                 <label>Year</label>
-                <select>
+                <select id="year">
                     <option>Select Year</option>
                     <option>1st Year</option>
                     <option>2nd Year</option>
@@ -177,7 +131,7 @@
 
             <div class="form-group half-width">
                 <label>Block</label>
-                <select>
+                <select id="block">
                     <option>Select Block</option>
                     <option>Block 1</option>
                     <option>Block 2</option>
@@ -188,19 +142,96 @@
 
         <div class="form-group">
             <label>Room Number</label>
-            <input type="text" placeholder="Enter Room Number">
+            <input type="text" id="roomNumber" placeholder="Enter Room Number">
         </div>
 
         <div class="form-group">
             <label>Reason for Leave</label>
-            <textarea placeholder="Enter reason for leave"></textarea>
+            <textarea id="reason" placeholder="Enter reason for leave"></textarea>
         </div>
 
-        <button type="submit">Submit Leave Request</button>
+        <button type="submit" id="submitBtn">Submit Leave Request</button>
     </form>
 </div>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-    <script src="supabaseClient.js"></script>
+<script src="supabaseClient.js"></script>
+
+<script>
+    // ── On page load, get student from sessionStorage (set during login) ──
+    // Your loginStudent.html should save the student object after successful login:
+    // sessionStorage.setItem("student", JSON.stringify(studentData));
+
+    let student = null;
+
+    window.onload = function () {
+        const stored = sessionStorage.getItem("loggedInUser");
+
+        if (!stored) {
+            alert("You must be logged in.");
+            window.location.href = "loginStudent.html";
+            return;
+        }
+
+        student = JSON.parse(stored);
+
+        document.getElementById("studentInfo").innerHTML =
+            `👤 <strong>${student.full_name}</strong> (${student.roll_number}) &nbsp;|&nbsp; 🏠 ${student.hostel_type}`;
+    };
+
+    // ── Form Submit ──
+    document.getElementById("leaveForm").onsubmit = async function (e) {
+        e.preventDefault();
+
+        const fromDate = document.getElementById("fromDate").value;
+        const toDate   = document.getElementById("toDate").value;
+        const year     = document.getElementById("year").value;
+        const block    = document.getElementById("block").value;
+        const room     = document.getElementById("roomNumber").value.trim();
+        const reason   = document.getElementById("reason").value.trim();
+        const roomPattern = /^[A-Za-z0-9]+$/;
+
+        // Validation
+        if (!fromDate)                             return alert("Please select From Date.");
+        if (!toDate)                               return alert("Please select To Date.");
+        if (new Date(toDate) < new Date(fromDate)) return alert("To Date cannot be earlier than From Date.");
+        if (year === "Select Year")                return alert("Please select your Year.");
+        if (block === "Select Block")              return alert("Please select your Block.");
+        if (!roomPattern.test(room))               return alert("Room Number should contain only letters and numbers.");
+        if (reason.length < 5)                     return alert("Reason must be at least 5 characters long.");
+
+        const submitBtn = document.getElementById("submitBtn");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        const { error } = await supabaseClient
+            .from("leave_requests")
+            .insert([{
+                student_id:   student.id,             // bigint from students table
+                student_name: student.full_name,
+                roll_number:  student.roll_number,
+                from_date:    fromDate,
+                to_date:      toDate,
+                year:         year,
+                block:        block,
+                room_number:  room,
+                reason:       reason,
+                hostel_type:  student.hostel_type,    // "Boys Hostel" or "Girls Hostel"
+                status:       "Pending"
+            }]);
+
+        if (error) {
+            console.error(error);
+            alert("Failed to submit: " + error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Leave Request";
+        } else {
+            alert(`Leave Request Submitted! Your ${student.hostel_type} caretaker/warden will review it.`);
+            window.location.href = "leaveHistory.html";
+        }
+    };
+</script>
+
 </body>
 </html>

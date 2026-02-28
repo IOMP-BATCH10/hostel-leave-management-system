@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Approvals | Warden</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", Arial, sans-serif; background: #f5f7fa; min-height: 100vh; }
+
+        .topbar {
+            background: #1a3a2a;
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .topbar h1 { font-size: 20px; font-weight: 600; }
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.15);
+            padding: 6px 14px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .container { max-width: 1050px; margin: 32px auto; padding: 0 20px; }
+
+        .stats-row { display: flex; gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: 8px; padding: 16px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); flex: 1; text-align: center; }
+        .stat-card .num { font-size: 28px; font-weight: 700; color: #059669; }
+        .stat-card .lbl { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+        .info-banner {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            border-radius: 8px;
+            padding: 12px 18px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #065f46;
+        }
+
+        .table-card { background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); overflow: hidden; }
+        .table-header { padding: 20px 24px; border-bottom: 1px solid #e5e7eb; }
+        .table-header h2 { font-size: 16px; color: #1f2937; font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            background: #f9fafb;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        tbody td { padding: 14px 16px; font-size: 14px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: #f9fafb; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge-caretaker-approved { background: #dbeafe; color: #1e40af; }
+
+        .action-btns { display: flex; gap: 8px; }
+        .btn-approve { padding: 6px 14px; background: #10b981; color: white; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; }
+        .btn-approve:hover { background: #059669; }
+        .btn-reject  { padding: 6px 14px; background: #ef4444; color: white; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; }
+        .btn-reject:hover  { background: #dc2626; }
+
+        .caretaker-note { font-size: 12px; color: #6b7280; font-style: italic; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .loading { text-align: center; padding: 40px; color: #6b7280; }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; border-radius: 10px; padding: 28px; width: 420px; max-width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        .modal h3 { font-size: 17px; color: #1f2937; margin-bottom: 16px; }
+        .modal textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; resize: none; height: 90px; font-family: inherit; }
+        .modal textarea:focus { outline: none; border-color: #059669; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+        .btn-cancel { padding: 8px 18px; background: #f3f4f6; color: #374151; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn-confirm { padding: 8px 18px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn-confirm.approve { background: #10b981; }
+        .btn-confirm.reject  { background: #ef4444; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>📋 Pending Approvals</h1>
+    <div style="display:flex;align-items:center;gap:16px;">
+        <span id="wardenName" style="font-size:13px;opacity:0.8;"></span>
+        <a href="wardenDashboard.html" class="back-btn">← Back</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="num" id="pendingCount">—</div>
+            <div class="lbl">Awaiting Your Approval</div>
+        </div>
+        <div class="stat-card">
+            <div class="num" id="hostelName">—</div>
+            <div class="lbl">Your Hostel</div>
+        </div>
+    </div>
+
+    <div class="info-banner">
+        ℹ️ These requests have been <strong>approved by the Caretaker</strong> and are now awaiting your final decision.
+    </div>
+
+    <div class="table-card">
+        <div class="table-header">
+            <h2>Caretaker Approved — Awaiting Warden Decision</h2>
+        </div>
+        <div id="tableContainer">
+            <div class="loading">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3 id="modalTitle">Add Comment</h3>
+        <textarea id="commentInput" placeholder="Enter your comment (optional)..."></textarea>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-confirm" id="confirmBtn" onclick="confirmAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
+    let warden = null;
+    let requests = [];
+    let currentAction = null;
+    let currentRequestId = null;
+
+    window.onload = async function () {
+        const stored = sessionStorage.getItem("loggedInUser");
+        if (!stored) { window.location.href = "loginWarden.html"; return; }
+        warden = JSON.parse(stored);
+        document.getElementById("wardenName").textContent = warden.full_name;
+        document.getElementById("hostelName").textContent = warden.hostel;
+        await loadRequests();
+    };
+
+    async function loadRequests() {
+        const { data, error } = await supabaseClient
+            .from("leave_requests")
+            .select("*")
+            .eq("hostel_type", warden.hostel)
+            .eq("status", "Caretaker Approved")   // only caretaker-approved ones
+            .order("applied_at", { ascending: false });
+
+        if (error) { console.error(error); return; }
+        requests = data || [];
+        document.getElementById("pendingCount").textContent = requests.length;
+        renderTable();
+    }
+
+    function renderTable() {
+        const container = document.getElementById("tableContainer");
+        if (requests.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>No requests awaiting your approval!</p></div>`;
+            return;
+        }
+        container.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Roll No.</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Block / Room</th>
+                        <th>Reason</th>
+                        <th>Caretaker Note</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${requests.map(r => `
+                        <tr>
+                            <td>${r.student_name || '—'}</td>
+                            <td>${r.roll_number || '—'}</td>
+                            <td>${formatDate(r.from_date)}</td>
+                            <td>${formatDate(r.to_date)}</td>
+                            <td>${r.block || '—'} / ${r.room_number || '—'}</td>
+                            <td title="${r.reason}">${truncate(r.reason, 25)}</td>
+                            <td class="caretaker-note">${r.caretaker_comment || '—'}</td>
+                            <td><span class="badge badge-caretaker-approved">Caretaker Approved</span></td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="btn-approve" onclick="openModal(${r.id}, 'approve')">Approve</button>
+                                    <button class="btn-reject"  onclick="openModal(${r.id}, 'reject')">Reject</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    function openModal(id, action) {
+        currentRequestId = id;
+        currentAction = action;
+        document.getElementById("modalTitle").textContent = action === 'approve' ? '✅ Final Approval' : '❌ Reject Request';
+        document.getElementById("commentInput").value = '';
+        const confirmBtn = document.getElementById("confirmBtn");
+        confirmBtn.textContent = action === 'approve' ? 'Approve' : 'Reject';
+        confirmBtn.className = `btn-confirm ${action}`;
+        document.getElementById("modalOverlay").classList.add("show");
+    }
+
+    function closeModal() {
+        document.getElementById("modalOverlay").classList.remove("show");
+        currentRequestId = null; currentAction = null;
+    }
+
+    async function confirmAction() {
+        const comment = document.getElementById("commentInput").value.trim();
+        const newStatus = currentAction === 'approve' ? 'Approved' : 'Rejected';
+
+        const { error } = await supabaseClient
+            .from("leave_requests")
+            .update({
+                status:         newStatus,
+                warden_action:  currentAction === 'approve' ? 'Approved' : 'Rejected',
+                warden_comment: comment || null
+            })
+            .eq("id", currentRequestId);
+
+        if (error) {
+            alert("Failed: " + error.message);
+        } else {
+            alert(`Request ${newStatus} successfully!`);
+            closeModal();
+            await loadRequests();
+        }
+    }
+
+    function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
+    function truncate(str, n) { return str && str.length > n ? str.slice(0, n) + '...' : (str || '—'); }
+</script>
+</body>
+</html>

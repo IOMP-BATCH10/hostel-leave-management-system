@@ -161,7 +161,7 @@ body {
     transform: translateY(-6px);
     box-shadow: 0 14px 28px rgba(0,0,0,0.12);
 }
-/* Container and Form */
+
 .container {
     max-width: 600px;
     margin: 50px auto;
@@ -201,7 +201,6 @@ textarea {
     height: 80px;
 }
 
-/* Side by Side Row */
 .form-row {
     display: flex;
     gap: 20px;
@@ -212,7 +211,6 @@ textarea {
     flex: 1;
 }
 
-/* Button */
 button {
     padding: 12px;
     background-color: #1f4ed8;
@@ -229,30 +227,37 @@ button:hover {
 }
 
 .logout {
-            margin-top: 30px;
-            display: inline-block;
-            padding: 12px 25px;
-            background-color: #2563eb;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            transition: 0.3s;
-        }
+    margin-top: 30px;
+    display: inline-block;
+    padding: 12px 25px;
+    background-color: #2563eb;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: 0.3s;
+}
 
-        .logout:hover {
-            background-color: #1e40af;
-        }
+.logout:hover {
+    background-color: #1e40af;
+}
 
-/* Responsive: On very small screens, stack vertically */
 @media (max-width: 500px) {
     .form-row {
         flex-direction: column;
     }
 }
-
     </style>
 </head>
 <body>
+
+<!-- Protection script: runs before page loads -->
+<script>
+    const user = sessionStorage.getItem('loggedInUser');
+    if (!user) {
+        alert("You must login first!");
+        window.location.href = "loginStudent.html";
+    }
+</script>
 
 <div class="dashboard-container">
 
@@ -277,11 +282,14 @@ button:hover {
         </a>
 
     </div>
-    <a href="home.html" class="logout">Logout</a>
+
+    <!-- Logout clears session and goes to home -->
+    <a href="home.html" class="logout" onclick="sessionStorage.removeItem('loggedInUser')">Logout</a>
 
 </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
+    <script src="config.js"></script>
     <script src="supabaseClient.js"></script>
 </body>
 </html>

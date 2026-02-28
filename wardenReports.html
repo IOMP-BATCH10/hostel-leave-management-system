@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Reports | Warden</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", Arial, sans-serif; background: #f5f7fa; min-height: 100vh; }
+
+        .topbar {
+            background: #1a3a2a;
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .topbar h1 { font-size: 20px; font-weight: 600; }
+        .back-btn { color: white; text-decoration: none; background: rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 5px; font-size: 13px; }
+        .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .container { max-width: 1050px; margin: 32px auto; padding: 0 20px; }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+        .stat-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; border-top: 3px solid transparent; }
+        .stat-card.total   { border-top-color: #6366f1; }
+        .stat-card.pending { border-top-color: #f59e0b; }
+        .stat-card.approved{ border-top-color: #10b981; }
+        .stat-card.rejected{ border-top-color: #ef4444; }
+        .stat-card .num { font-size: 32px; font-weight: 700; }
+        .stat-card.total    .num { color: #6366f1; }
+        .stat-card.pending  .num { color: #f59e0b; }
+        .stat-card.approved .num { color: #10b981; }
+        .stat-card.rejected .num { color: #ef4444; }
+        .stat-card .lbl { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+        /* Filter */
+        .filter-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .filter-row select, .filter-row input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        .filter-row select:focus, .filter-row input:focus { outline: none; border-color: #059669; }
+        .filter-label { font-size: 13px; color: #6b7280; font-weight: 500; }
+
+        .table-card { background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); overflow: hidden; }
+        .table-header { padding: 20px 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+        .table-header h2 { font-size: 16px; color: #1f2937; font-weight: 600; }
+        .total-badge { background: #ecfdf5; color: #059669; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead th { background: #f9fafb; padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; }
+        tbody td { padding: 13px 16px; font-size: 14px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: #f9fafb; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge-pending           { background: #fef3c7; color: #92400e; }
+        .badge-caretaker-approved{ background: #dbeafe; color: #1e40af; }
+        .badge-approved          { background: #d1fae5; color: #065f46; }
+        .badge-rejected          { background: #fee2e2; color: #991b1b; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .loading { text-align: center; padding: 40px; color: #6b7280; }
+
+        @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>📊 Leave Reports</h1>
+    <div style="display:flex;align-items:center;gap:16px;">
+        <span id="wardenName" style="font-size:13px;opacity:0.8;"></span>
+        <a href="wardenDashboard.html" class="back-btn">← Back</a>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card total">
+            <div class="num" id="statTotal">—</div>
+            <div class="lbl">Total Requests</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="num" id="statPending">—</div>
+            <div class="lbl">Pending</div>
+        </div>
+        <div class="stat-card approved">
+            <div class="num" id="statApproved">—</div>
+            <div class="lbl">Approved</div>
+        </div>
+        <div class="stat-card rejected">
+            <div class="num" id="statRejected">—</div>
+            <div class="lbl">Rejected</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-row">
+        <span class="filter-label">Filter:</span>
+        <select id="statusFilter" onchange="applyFilter()">
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Caretaker Approved">Caretaker Approved</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="Search by name or roll no..." oninput="applyFilter()" style="width:220px;">
+        <input type="date" id="dateFrom" onchange="applyFilter()" title="From date">
+        <input type="date" id="dateTo"   onchange="applyFilter()" title="To date">
+    </div>
+
+    <div class="table-card">
+        <div class="table-header">
+            <h2>All Leave Records — <span id="hostelLabel"></span></h2>
+            <span class="total-badge" id="totalBadge">0 records</span>
+        </div>
+        <div id="tableContainer">
+            <div class="loading">Loading reports...</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
+    let warden = null;
+    let allRequests = [];
+
+    window.onload = async function () {
+        const stored = sessionStorage.getItem("loggedInUser");
+        if (!stored) { window.location.href = "loginWarden.html"; return; }
+        warden = JSON.parse(stored);
+        document.getElementById("wardenName").textContent = warden.full_name;
+        document.getElementById("hostelLabel").textContent = warden.hostel;
+        await loadAll();
+    };
+
+    async function loadAll() {
+        const { data, error } = await supabaseClient
+            .from("leave_requests")
+            .select("*")
+            .eq("hostel_type", warden.hostel)
+            .order("applied_at", { ascending: false });
+
+        if (error) { console.error(error); return; }
+        allRequests = data || [];
+
+        // Stats
+        document.getElementById("statTotal").textContent    = allRequests.length;
+        document.getElementById("statPending").textContent  = allRequests.filter(r => r.status === 'Pending' || r.status === 'Caretaker Approved').length;
+        document.getElementById("statApproved").textContent = allRequests.filter(r => r.status === 'Approved').length;
+        document.getElementById("statRejected").textContent = allRequests.filter(r => r.status === 'Rejected').length;
+
+        applyFilter();
+    }
+
+    function applyFilter() {
+        const statusVal  = document.getElementById("statusFilter").value;
+        const search     = document.getElementById("searchInput").value.toLowerCase();
+        const dateFrom   = document.getElementById("dateFrom").value;
+        const dateTo     = document.getElementById("dateTo").value;
+
+        let filtered = allRequests;
+        if (statusVal) filtered = filtered.filter(r => r.status === statusVal);
+        if (search)    filtered = filtered.filter(r =>
+            (r.student_name || '').toLowerCase().includes(search) ||
+            (r.roll_number  || '').toLowerCase().includes(search)
+        );
+        if (dateFrom) filtered = filtered.filter(r => r.from_date >= dateFrom);
+        if (dateTo)   filtered = filtered.filter(r => r.to_date   <= dateTo);
+
+        document.getElementById("totalBadge").textContent = `${filtered.length} record${filtered.length !== 1 ? 's' : ''}`;
+        renderTable(filtered);
+    }
+
+    function renderTable(data) {
+        const container = document.getElementById("tableContainer");
+        if (data.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No records found.</p></div>`;
+            return;
+        }
+        container.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Roll No.</th>
+                        <th>Dept.</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Block / Room</th>
+                        <th>Reason</th>
+                        <th>Applied On</th>
+                        <th>Status</th>
+                        <th>Caretaker Note</th>
+                        <th>Warden Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(r => `
+                        <tr>
+                            <td>${r.student_name || '—'}</td>
+                            <td>${r.roll_number || '—'}</td>
+                            <td style="font-size:12px;">${r.year || '—'}</td>
+                            <td>${formatDate(r.from_date)}</td>
+                            <td>${formatDate(r.to_date)}</td>
+                            <td>${r.block || '—'} / ${r.room_number || '—'}</td>
+                            <td title="${r.reason}">${truncate(r.reason, 20)}</td>
+                            <td>${formatDate(r.applied_at)}</td>
+                            <td><span class="badge ${badgeClass(r.status)}">${r.status}</span></td>
+                            <td style="font-size:12px;color:#6b7280;font-style:italic;">${r.caretaker_comment || '—'}</td>
+                            <td style="font-size:12px;color:#6b7280;font-style:italic;">${r.warden_comment || '—'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    function badgeClass(s) {
+        if (s === 'Pending')            return 'badge-pending';
+        if (s === 'Caretaker Approved') return 'badge-caretaker-approved';
+        if (s === 'Approved')           return 'badge-approved';
+        if (s === 'Rejected')           return 'badge-rejected';
+        return '';
+    }
+    function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
+    function truncate(str, n) { return str && str.length > n ? str.slice(0, n) + '...' : (str || '—'); }
+</script>
+</body>
+</html>
